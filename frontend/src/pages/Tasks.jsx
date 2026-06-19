@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { CalendarDays, CheckSquare, Megaphone, Share2, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { CalendarDays, CheckSquare, Megaphone, Share2, Calendar, Loader } from 'lucide-react';
+import { UserContext } from '../context/UserContext';
 
 export default function Tasks() {
   const [activeTab, setActiveTab] = useState('daily');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const { telegramId, refreshUser } = useContext(UserContext);
+
+  const fetchTasks = () => {
+    if (!telegramId) return;
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    fetch(`${apiUrl}/api/tasks`)
+    fetch(`${apiUrl}/api/tasks/${telegramId}`)
       .then(res => res.json())
       .then(data => {
         setTasks(data);
@@ -18,7 +22,33 @@ export default function Tasks() {
         console.error(err);
         setLoading(false);
       });
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, [telegramId]);
+
+  const handleStartTask = async (task) => {
+    if (task.completed) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/tasks/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId, taskId: task.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Task completed! +${task.reward_amount} GF`);
+        refreshUser();
+        fetchTasks();
+      } else {
+        alert(data.error || 'Error completing task');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
 
   const getIcon = (type) => {
     switch(type) {
@@ -83,7 +113,14 @@ export default function Tasks() {
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{task.reward_text}</p>
                 </div>
               </div>
-              <button className="btn" style={{ padding: '8px 20px', borderRadius: '20px' }}>Start</button>
+              <button 
+                className="btn" 
+                style={{ padding: '8px 20px', borderRadius: '20px', opacity: task.completed ? 0.5 : 1, cursor: task.completed ? 'not-allowed' : 'pointer' }}
+                onClick={() => handleStartTask(task)}
+                disabled={task.completed}
+              >
+                {task.completed ? 'Completed' : 'Start'}
+              </button>
             </div>
           ))
         )}

@@ -25,6 +25,7 @@ const initDB = async () => {
         );
 
         ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_balance DECIMAL DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_claim_date DATE;
 
         CREATE TABLE IF NOT EXISTS tasks (
           id SERIAL PRIMARY KEY,
@@ -35,6 +36,23 @@ const initDB = async () => {
           category VARCHAR(50) DEFAULT 'daily',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS user_tasks (
+          id SERIAL PRIMARY KEY,
+          telegram_id VARCHAR(255) REFERENCES users(telegram_id),
+          task_id INTEGER REFERENCES tasks(id),
+          completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(telegram_id, task_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_promos (
+          id SERIAL PRIMARY KEY,
+          telegram_id VARCHAR(255) REFERENCES users(telegram_id),
+          promo_code VARCHAR(255) NOT NULL,
+          redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(telegram_id, promo_code)
+        );
+
 
         CREATE TABLE IF NOT EXISTS transactions (
           id SERIAL PRIMARY KEY,

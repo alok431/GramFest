@@ -3,10 +3,12 @@ import { Lightbulb, Repeat, Diamond, Download, Receipt, Users, Tv, CheckSquare }
 import { UserContext } from '../context/UserContext';
 
 export default function Wallet() {
-  const { user, loading, telegramId } = useContext(UserContext);
+  const { user, loading, telegramId, refreshUser } = useContext(UserContext);
   const [transactions, setTransactions] = useState([]);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawAddress, setWithdrawAddress] = useState('');
 
-  useEffect(() => {
+  const fetchTransactions = () => {
     if (telegramId) {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       fetch(`${apiUrl}/api/transactions/${telegramId}`)
@@ -14,7 +16,39 @@ export default function Wallet() {
         .then(data => setTransactions(data))
         .catch(err => console.error(err));
     }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
   }, [telegramId]);
+
+  const handleWithdraw = async () => {
+    const amount = parseInt(withdrawAmount.replace(/,/g, ''));
+    if (!amount || amount < 100000) return alert('Minimum withdrawal is 100,000 GF');
+    if (!withdrawAddress) return alert('Please enter your TON wallet address');
+    if (user?.balance < amount) return alert('Insufficient GF balance');
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/wallet/withdraw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId, amount, address: withdrawAddress })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Withdrawal requested successfully!');
+        setWithdrawAmount('');
+        setWithdrawAddress('');
+        refreshUser();
+        fetchTransactions();
+      } else {
+        alert(data.error || 'Error during withdrawal');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -94,7 +128,7 @@ export default function Wallet() {
         </div>
 
         <div style={{ position: 'relative', marginBottom: '16px' }}>
-          <input type="text" placeholder="Or enter GF coins manually..." style={{ width: '100%', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '14px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
+          <input type="text" placeholder="Or enter GF coins manually..." value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} style={{ width: '100%', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '14px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
           <span style={{ position: 'absolute', right: '14px', top: '14px', color: 'var(--primary)', fontWeight: 'bold' }}>GF</span>
         </div>
 
@@ -117,9 +151,9 @@ export default function Wallet() {
           ))}
         </div>
 
-        <input type="text" placeholder="TON wallet address (EQ...)" style={{ width: '100%', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '14px', color: '#fff', fontSize: '1rem', outline: 'none', marginBottom: '16px' }} />
+        <input type="text" placeholder="TON wallet address (EQ...)" value={withdrawAddress} onChange={e => setWithdrawAddress(e.target.value)} style={{ width: '100%', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '14px', color: '#fff', fontSize: '1rem', outline: 'none', marginBottom: '16px' }} />
         
-        <button className="btn" style={{ width: '100%', padding: '14px', background: 'var(--warning)', color: '#000' }}>Withdraw Now</button>
+        <button className="btn" style={{ width: '100%', padding: '14px', background: 'var(--warning)', color: '#000' }} onClick={handleWithdraw}>Withdraw Now</button>
         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px' }}>Processed within 24 hours. Withdrawal fee is based on referrals.</p>
 
       </div>
@@ -143,7 +177,7 @@ export default function Wallet() {
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(tx.created_at).toLocaleDateString()}</p>
               </div>
             </div>
-            <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>+{tx.amount.toLocaleString()} GF</span>
+            <span style={{ color: tx.amount > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 'bold' }}>{tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()} GF</span>
           </div>
         ))
       )}

@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sparkles, Globe } from 'lucide-react';
 
 export default function Header() {
+  const navigate = useNavigate();
   return (
     <header style={{
       display: 'flex',
@@ -41,7 +43,7 @@ export default function Header() {
         <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '20px' }}>
           <Globe size={14} /> EN
         </button>
-        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '20px' }}>
+        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '20px' }} onClick={() => navigate('/tasks')}>
           + TASK
         </button>
       </div>

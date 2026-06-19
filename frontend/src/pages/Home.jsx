@@ -1,13 +1,21 @@
 import React, { useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Flame, Ticket, Bot, Target, Users, Landmark, Zap, Receipt, ChevronUp } from 'lucide-react';
 import { UserContext } from '../context/UserContext';
 
 export default function Home() {
+  const navigate = useNavigate();
   const { user, telegramId, loading, refreshUser } = useContext(UserContext);
   const tonBalance = user?.ton_balance ? Number(user.ton_balance) : 0;
   const [spins, setSpins] = useState(user?.spins || 0);
   const [ads, setAds] = useState([]);
   const [adsLoading, setAdsLoading] = useState(true);
+  const [promo, setPromo] = useState('');
+
+  // Update local spins when user changes
+  useEffect(() => {
+    if (user) setSpins(user.spins);
+  }, [user]);
 
   const fetchAds = async () => {
     if (!telegramId) return;
@@ -61,6 +69,70 @@ export default function Home() {
       default: return <Target size={20} color={c} />;
     }
   };
+
+  const handleClaimStreak = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/user/streak/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Claimed 1000 GF and 1 spin!');
+        refreshUser();
+      } else {
+        alert(data.error || 'Error claiming streak');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
+  const handleSpin = async () => {
+    if (spins <= 0) return alert('No spins left!');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/spin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`You won ${data.winAmount} GF!`);
+        refreshUser();
+      } else {
+        alert(data.error || 'Error spinning');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
+  const handleRedeem = async () => {
+    if (!promo) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/promo/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId, code: promo })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Promo redeemed successfully!');
+        refreshUser();
+        setPromo('');
+      } else {
+        alert(data.error || 'Error redeeming promo');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -168,7 +240,7 @@ export default function Home() {
           ))}
         </div>
         <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Claim daily for +1,000 GF + 1 spin</p>
-        <button className="btn" style={{ width: '100%', background: 'var(--success)', color: '#000' }}>Claim Streak</button>
+        <button className="btn" style={{ width: '100%', background: 'var(--success)', color: '#000' }} onClick={handleClaimStreak}>Claim Streak</button>
       </div>
 
       {/* Spin Wheel Mock */}
@@ -188,26 +260,26 @@ export default function Home() {
           <div style={{ position: 'absolute', bottom: '20px', right: '40px', transform: 'rotate(45deg)', fontSize: '0.8rem', fontWeight: 'bold' }}>500</div>
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '16px 0' }}>Spins available: <strong style={{ color: '#fff' }}>{spins}</strong></p>
-        <button className="btn" style={{ padding: '10px 32px', borderRadius: '24px' }}>SPIN NOW</button>
+        <button className="btn" style={{ padding: '10px 32px', borderRadius: '24px' }} onClick={handleSpin}>SPIN NOW</button>
       </div>
 
       {/* Quick Actions */}
       <div className="card" style={{ background: 'transparent', border: 'none', padding: 0 }}>
         <h3 className="section-title">Quick Actions</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px' }}>
+          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/friends')}>
             <Users size={24} color="var(--primary)" />
             <span style={{ fontSize: '0.85rem' }}>Invite Friend</span>
           </div>
-          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px' }}>
+          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/wallet')}>
             <Landmark size={24} color="var(--success)" />
             <span style={{ fontSize: '0.85rem' }}>Withdraw</span>
           </div>
-          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px' }}>
+          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/tasks')}>
             <Zap size={24} color="var(--danger)" />
             <span style={{ fontSize: '0.85rem' }}>Earn More</span>
           </div>
-          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px' }}>
+          <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 10px', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/check')}>
             <Receipt size={24} color="#fff" />
             <span style={{ fontSize: '0.85rem' }}>TON Check</span>
           </div>
@@ -218,8 +290,8 @@ export default function Home() {
       <div className="card">
         <h3 className="section-title">Promo Code</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <input type="text" placeholder="Enter code..." style={{ flex: 1, background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '10px', color: '#fff', outline: 'none' }} />
-          <button className="btn" style={{ borderRadius: 'var(--border-radius-sm)' }}>Redeem</button>
+          <input type="text" placeholder="Enter code..." value={promo} onChange={e => setPromo(e.target.value)} style={{ flex: 1, background: 'var(--bg-dark)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: '10px', color: '#fff', outline: 'none' }} />
+          <button className="btn" style={{ borderRadius: 'var(--border-radius-sm)' }} onClick={handleRedeem}>Redeem</button>
         </div>
       </div>
 

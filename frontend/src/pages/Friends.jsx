@@ -7,6 +7,23 @@ export default function Friends() {
   const [referralCount, setReferralCount] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://t.me/GramFestApp_bot?start=${telegramId || 'user'}`);
+    alert('Referral link copied!');
+  };
+
+  const handleShare = () => {
+    const text = encodeURIComponent('Play Gram Fest and earn GF and TON!');
+    const url = encodeURIComponent(`https://t.me/GramFestApp_bot?start=${telegramId || 'user'}`);
+    const tgUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+    
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      window.Telegram.WebApp.openTelegramLink(tgUrl);
+    } else {
+      window.open(tgUrl, '_blank');
+    }
+  };
+
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     
@@ -52,12 +69,12 @@ export default function Friends() {
           <input 
             type="text" 
             readOnly 
-            value={`https://t.me/gram_fest_bot/start?ref=${telegramId || 'user'}`}
+            value={`https://t.me/GramFestApp_bot?start=${telegramId || 'user'}`}
             style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', padding: '0 10px', outline: 'none' }} 
           />
-          <button className="btn" style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: '6px', color: '#000', background: 'var(--warning)' }}>Copy</button>
+          <button className="btn" onClick={handleCopy} style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: '6px', color: '#000', background: 'var(--warning)' }}>Copy</button>
         </div>
-        <button className="btn" style={{ width: '100%', background: 'var(--primary)', padding: '12px' }}>
+        <button className="btn" onClick={handleShare} style={{ width: '100%', background: 'var(--primary)', padding: '12px' }}>
           <Share size={18} /> Invite via Telegram
         </button>
         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px' }}>Earn 20% of friends' task rewards only</p>
