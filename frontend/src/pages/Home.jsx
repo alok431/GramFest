@@ -1,11 +1,66 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Flame, Ticket, Bot, Target, Users, Landmark, Zap, Receipt, ChevronUp } from 'lucide-react';
 import { UserContext } from '../context/UserContext';
 
 export default function Home() {
-  const { user, loading } = useContext(UserContext);
-  const [tonBalance, setTonBalance] = useState(0.0174);
-  const [spins, setSpins] = useState(9);
+  const { user, telegramId, loading, refreshUser } = useContext(UserContext);
+  const tonBalance = user?.ton_balance ? Number(user.ton_balance) : 0;
+  const [spins, setSpins] = useState(user?.spins || 0);
+  const [ads, setAds] = useState([]);
+  const [adsLoading, setAdsLoading] = useState(true);
+
+  const fetchAds = async () => {
+    if (!telegramId) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/ads/${telegramId}`);
+      const data = await res.json();
+      setAds(data);
+      setAdsLoading(false);
+    } catch (err) {
+      console.error('Error fetching ads', err);
+      setAdsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAds();
+  }, [telegramId]);
+
+  const handleWatchAd = async (ad) => {
+    if (ad.views_today >= ad.max_views_per_day) {
+      alert("You have reached the daily limit for this ad.");
+      return;
+    }
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/ads/watch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId, adId: ad.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        refreshUser();
+        fetchAds();
+      } else {
+        alert(data.error || "Error watching ad");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error.");
+    }
+  };
+
+  const getIcon = (type, color) => {
+    const c = `var(--${color})`;
+    switch(type) {
+      case 'Target': return <Target size={20} color={c} />;
+      case 'Bot': return <Bot size={20} color={c} />;
+      default: return <Target size={20} color={c} />;
+    }
+  };
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -52,59 +107,45 @@ export default function Home() {
 
       {/* Watch Ads */}
       <div className="card">
-        <h3 className="section-title">📺 Watch Ads <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>3 networks</span></h3>
+        <h3 className="section-title">📺 Watch Ads <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>{ads.length} networks</span></h3>
         
-        {/* Ad 1 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(157, 0, 255, 0.1)', padding: '10px', borderRadius: '12px' }}><Target size={20} color="var(--primary)" /></div>
-            <div>
-              <h4 style={{ fontSize: '0.9rem' }}>Watch & Earn</h4>
-              <p style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>+2,000 GF per view</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0/10 today · 10 left</p>
-            </div>
-          </div>
-          <button className="btn" style={{ padding: '6px 16px' }}>Watch</button>
-        </div>
+        {adsLoading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '20px' }}>Loading ads...</p>
+        ) : (
+          ads.map((ad, index) => {
+            const isLast = index === ads.length - 1;
+            const isMaxed = ad.views_today >= ad.max_views_per_day;
+            
+            // Map color name to CSS variable
+            let colorVar = `var(--${ad.icon_color})`;
+            let bgVar = `rgba(157, 0, 255, 0.1)`; // default primary bg
+            if (ad.icon_color === 'danger') bgVar = `rgba(255, 51, 102, 0.1)`;
+            if (ad.icon_color === 'secondary') bgVar = `rgba(0, 229, 255, 0.1)`;
 
-        {/* Ad 2 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(255, 51, 102, 0.1)', padding: '10px', borderRadius: '12px' }}><Target size={20} color="var(--danger)" /></div>
-            <div>
-              <h4 style={{ fontSize: '0.9rem' }}>Bonus Ad</h4>
-              <p style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>+2,000 GF per view</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0/10 today · 10 left</p>
-            </div>
-          </div>
-          <button className="btn" style={{ padding: '6px 16px', background: 'var(--warning)', color: '#000' }}>Watch</button>
-        </div>
-
-        {/* Ad 3 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '10px', borderRadius: '12px' }}><Bot size={20} color="var(--secondary)" /></div>
-            <div>
-              <h4 style={{ fontSize: '0.9rem' }}>TON Bonus x3</h4>
-              <p style={{ color: 'var(--secondary)', fontSize: '0.8rem', fontWeight: 600 }}>+0.001 TON per view</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0/50 today · 50 left</p>
-            </div>
-          </div>
-          <button className="btn" style={{ padding: '6px 16px', background: 'var(--warning)', color: '#000' }}>Watch</button>
-        </div>
-
-        {/* Ad 4 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '10px', borderRadius: '12px' }}><Bot size={20} color="var(--secondary)" /></div>
-            <div>
-              <h4 style={{ fontSize: '0.9rem' }}>TON Bonus x4</h4>
-              <p style={{ color: 'var(--secondary)', fontSize: '0.8rem', fontWeight: 600 }}>+0.001 TON per view</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0/50 today · 50 left</p>
-            </div>
-          </div>
-          <button className="btn" style={{ padding: '6px 16px', background: 'var(--warning)', color: '#000' }}>Watch</button>
-        </div>
+            return (
+              <div key={ad.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingBottom: '12px', borderBottom: isLast ? 'none' : '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: bgVar, padding: '10px', borderRadius: '12px' }}>
+                    {getIcon(ad.icon_type, ad.icon_color)}
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.9rem' }}>{ad.title}</h4>
+                    <p style={{ color: colorVar, fontSize: '0.8rem', fontWeight: 600 }}>+{ad.reward_amount} {ad.reward_currency} per view</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{ad.views_today}/{ad.max_views_per_day} today · {ad.max_views_per_day - ad.views_today} left</p>
+                  </div>
+                </div>
+                <button 
+                  className="btn" 
+                  style={{ padding: '6px 16px', opacity: isMaxed ? 0.5 : 1, cursor: isMaxed ? 'not-allowed' : 'pointer' }}
+                  onClick={() => handleWatchAd(ad)}
+                  disabled={isMaxed}
+                >
+                  {isMaxed ? 'Done' : 'Watch'}
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Daily Streak */}
