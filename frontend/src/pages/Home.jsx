@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { Flame, Ticket, Bot, Target, Users, Landmark, Zap, Receipt, ChevronUp } from 'lucide-react';
 import { UserContext } from '../context/UserContext';
 
