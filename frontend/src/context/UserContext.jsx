@@ -10,7 +10,11 @@ export const UserProvider = ({ children }) => {
 
   // Initialize Telegram Web App
   useEffect(() => {
-    WebApp.ready();
+    try {
+      WebApp.ready();
+    } catch (err) {
+      console.warn("Not in Telegram environment or WebApp.ready() failed");
+    }
     
     // In local development outside Telegram, fallback to a mock ID
     const initDataUnsafe = WebApp.initDataUnsafe;
